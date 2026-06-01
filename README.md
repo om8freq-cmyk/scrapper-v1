@@ -1,93 +1,95 @@
-# Cognitive CRM
+# Cognitive CRM (Multi-Tenant B2B SaaS)
 
-> An intelligent CRM platform that automatically scrapes target websites for lead generation data, stores structured data securely, and triggers autonomous, personalized email workflows.
+An intelligent, multi-tenant lead generation and Customer Relationship Management (CRM) platform. Any external business can sign up, select an industry profile (Healthcare, Hotels, Real Estate, etc.), dynamically configure database schemas and vocabulary, deploy web scrapers to gather industry leads, and configure autonomous prompt-injected AI agents to manage custom CRM pipelines.
 
-## Architecture
+---
 
-- **Backend**: NestJS 11 (TypeScript) — REST API, BullMQ workers, Playwright scraper
-- **Frontend**: React 19 + Vite 8 + Tailwind CSS — Premium dashboard with light/dark theme
-- **Database**: PostgreSQL 16 + Prisma ORM 7.8
-- **Queue**: Redis 7 + BullMQ 5.77
-- **Email**: Nodemailer 8 with HTML templates
-- **Scraper**: Playwright 1.60 (headless Chromium)
+## Technical Stack
+
+- **Backend**: NestJS 11 (TypeScript) — Modular REST API, BullMQ async parser workers, Playwright browser scraper.
+- **Frontend**: React 19 + Vite 8 + Zustand + Tailwind CSS — Premium responsive dashboard with light/dark theme toggle.
+- **Database**: PostgreSQL 16 + Supabase Row-Level Security (RLS) + Prisma ORM v7 (Mumbai `ap-south-1` hosted).
+- **Asynchronous Queue**: Redis 7 + BullMQ 5.77.
+- **AI Middleware**: OpenAI API (GPT-4o & GPT-4o-mini).
+- **Schema Validation**: AJV (Another JSON Schema Validator) for dynamic client schemas.
+
+---
+
+## Core SaaS Architecture Features
+
+1. **100% Tenant Isolation**: Data is separated at the database layer using PostgreSQL Row-Level Security (RLS). Cross-tenant queries are blocked directly at the database engine level.
+2. **Metadata-Driven Fields**: Custom fields are saved under a GIN-indexed JSONB column. Payloads are checked at runtime using AJV compiler modules.
+3. **AI Parsing Middleware**: Unstructured scraper runs are mapped directly to custom dynamic fields using OpenAI structured output parsers.
+4. **Composed Prompt Factory**: Meta-Agents compile vocabulary, pipeline stages, and tone variables on client authentication, enabling custom industry workflows.
+
+---
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) v20+
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for PostgreSQL & Redis)
+- [Docker Desktop](https://www.docker.com/) (to run database and Redis services)
 - [Git](https://git-scm.com/)
+
+---
 
 ## Quick Start
 
-### 1. Start Infrastructure
-
+### 1. Launch Docker Services
 ```bash
 docker-compose up -d
 ```
+This runs PostgreSQL and Redis instances in the background.
 
-This starts PostgreSQL and Redis containers.
-
-### 2. Backend Setup
-
+### 2. Configure Environment Variables
+Copy and configure backend variables:
 ```bash
 cd backend
-cp ../.env.example .env    # Edit with your SMTP credentials
-npm install
-npx prisma migrate dev     # Run database migrations
-npm run start:dev           # Start NestJS in watch mode
+cp ../.env.example .env
 ```
+Ensure you provide your `DATABASE_URL` (Supabase or local PostgreSQL) and your `OPENAI_API_KEY` to run AI parsing.
 
-Backend runs at `http://localhost:3000`
-
-### 3. Frontend Setup
-
+### 3. Sync Database Schema & Build Client
 ```bash
-cd frontend
 npm install
-npm run dev                 # Start Vite dev server
+npx prisma db push
+npx prisma generate
 ```
 
-Frontend runs at `http://localhost:5173`
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/leads` | List leads (paginated, filterable) |
-| GET | `/api/leads/stats` | Dashboard statistics |
-| GET | `/api/leads/:id` | Get lead detail |
-| PATCH | `/api/leads/:id` | Update lead status |
-| DELETE | `/api/leads/:id` | Delete a lead |
-| POST | `/api/scraper/jobs` | Create a scrape job |
-| GET | `/api/scraper/jobs` | List scrape jobs |
-| GET | `/api/scraper/jobs/:id` | Get job detail |
-
-## Project Structure
-
+### 4. Run Applications Locally
+Start the backend NestJS server:
+```bash
+npm run start:dev
 ```
-ScRaPpEr/
-├── docker-compose.yml          # PostgreSQL + Redis
-├── .env.example                # Environment template
-├── backend/                    # NestJS API + Workers
-│   ├── prisma/                 # Database schema & migrations
-│   └── src/
-│       ├── leads/              # Lead CRUD module
-│       ├── scraper/            # Web scraper module
-│       ├── email/              # Email dispatch module
-│       ├── queue/              # BullMQ configuration
-│       └── prisma/             # Database service
-└── frontend/                   # React Dashboard
-    └── src/
-        ├── components/         # UI + Dashboard components
-        ├── pages/              # Route pages
-        ├── store/              # Zustand state
-        └── api/                # API client
+Backend runs at `http://localhost:3000`.
+
+Start the frontend Vite React server:
+```bash
+cd ../frontend
+npm install
+npm run dev
 ```
+Frontend runs at `http://localhost:5173`.
 
-## Environment Variables
+---
 
-See [.env.example](.env.example) for all configuration options.
+## Key API Endpoints
+All client-facing requests must supply the custom `x-tenant-id` header to route queries within RLS isolation.
 
-## License
+| Method | Endpoint | Headers | Description |
+|---|---|---|---|
+| `GET` | `/api/leads` | `x-tenant-id` | Retrieve paginated leads for active tenant |
+| `POST`| `/api/leads` | `x-tenant-id` | Save custom lead (validated via AJV schema) |
+| `POST`| `/api/scraper/jobs`| `x-tenant-id` | Deploy structured scraping task |
+| `POST`| `/webhook/communication/inbound`| `x-tenant-id` | WhatsApp/SMS webhook for AI Meta-Agent actions |
 
-Private — All rights reserved.
+---
+
+## Documentation Directories
+
+* [Product Requirements Document (PRD)](PRD.md): Detailed product features, user target personas, and roadmap goals.
+* [Architectural Blueprint](ARCHITECTURE_BLUEPRINT.md): Production DDL schemas, RLS rules, NestJS filters, and AI state machine blocks.
+* [Technical Knowledge Base](KNOWLEDGE.md): Detailed reference guide on RLS context middleware, AJV validator, and BullMQ worker structures.
+
+---
+
+*© 2026 Cognitive CRM. All rights reserved.*
