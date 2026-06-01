@@ -1,0 +1,45 @@
+{
+  "name": "cognitive-crm-backend",
+  "version": "1.0.0",
+  "description": "Cognitive CRM Platform - NestJS Backend",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@nestjs/bullmq": "^11.0.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/throttler": "^6.0.0",
+    "@prisma/client": "^7.0.0",
+    "@prisma/config": "^7.8.0",
+    "bullmq": "^5.0.0",
+    "class-transformer": "^0.5.0",
+    "class-validator": "^0.14.0",
+    "dotenv": "^17.4.2",
+    "handlebars": "^4.7.0",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.0.0",
+    "nodemailer": "^8.0.0",
+    "playwright": "^1.60.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@types/node": "^22.0.0",
+    "@types/nodemailer": "^6.4.0",
+    "prisma": "^7.0.0",
+    "ts-node": "^10.9.0",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.5.0"
+  }
+}
