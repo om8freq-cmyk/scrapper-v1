@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LeadsService } from '../leads/leads.service';
 import { GenericExtractor, ScrapeConfig } from './extractors/generic.extractor';
 import { chromium } from 'playwright';
-import { LeadStatus } from '@prisma/client';
+import { LeadStatus, JobStatus } from '@prisma/client';
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -73,7 +73,7 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
 
     await this.prisma.scrapeJob.update({
       where: { id: jobId },
-      data: { status: 'RUNNING', startedAt: new Date() },
+      data: { status: JobStatus.RUNNING, startedAt: new Date() },
     });
 
     const userAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
@@ -157,7 +157,7 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       await this.prisma.scrapeJob.update({
         where: { id: jobId },
         data: {
-          status: 'COMPLETED',
+          status: JobStatus.COMPLETED,
           leadsFound: savedCount,
           completedAt: new Date(),
         },
@@ -170,7 +170,7 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       await this.prisma.scrapeJob.update({
         where: { id: jobId },
         data: {
-          status: 'FAILED',
+          status: JobStatus.FAILED,
           error: error.message,
           completedAt: new Date(),
         },

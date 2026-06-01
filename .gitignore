@@ -4,3 +4,4 @@ dist
 redis.zip
 redis-portable
 .DS_Store
+*.db

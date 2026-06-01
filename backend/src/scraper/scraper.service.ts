@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -16,8 +17,8 @@ export class ScraperService {
     const job = await this.prisma.scrapeJob.create({
       data: {
         targetUrl,
-        config: config || null,
-        status: 'PENDING',
+        config: config ? (config as Prisma.InputJsonValue) : Prisma.JsonNull,
+        status: JobStatus.PENDING,
       },
     });
 
@@ -48,7 +49,7 @@ export class ScraperService {
   async updateJobStatus(
     id: string,
     data: {
-      status: string;
+      status: JobStatus;
       leadsFound?: number;
       error?: string;
       startedAt?: Date;
@@ -61,3 +62,4 @@ export class ScraperService {
     });
   }
 }
+
