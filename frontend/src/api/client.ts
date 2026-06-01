@@ -1,8 +1,13 @@
 import axios from 'axios';
 import type { Lead, DashboardStats, ScrapeJob, PaginatedResponse } from '@/types';
 
+let apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+if (apiBaseUrl !== '/api' && !apiBaseUrl.endsWith('/api')) {
+  apiBaseUrl = apiBaseUrl.replace(/\/$/, '') + '/api';
+}
+
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },

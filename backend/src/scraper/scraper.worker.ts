@@ -39,6 +39,8 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
     const host = this.configService.get<string>('REDIS_HOST', 'localhost');
     const port = this.configService.get<number>('REDIS_PORT', 6379);
 
+    const maxConcurrency = Number(this.configService.get<number>('SCRAPER_MAX_CONCURRENCY', 2));
+
     this.worker = new Worker(
       'scrape-queue',
       async (job: Job) => {
@@ -46,7 +48,7 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       },
       {
         connection: { host, port },
-        concurrency: this.configService.get<number>('SCRAPER_MAX_CONCURRENCY', 2),
+        concurrency: maxConcurrency,
       },
     );
 
@@ -112,7 +114,7 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       });
 
       // Pacing delay
-      const delay = this.configService.get<number>('SCRAPER_REQUEST_DELAY_MS', 1500);
+      const delay = Number(this.configService.get<number>('SCRAPER_REQUEST_DELAY_MS', 1500));
       await page.waitForTimeout(delay);
 
       // Extract raw data
