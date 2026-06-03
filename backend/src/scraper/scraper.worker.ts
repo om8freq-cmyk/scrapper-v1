@@ -414,7 +414,7 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       leads.push({
         name: name.charAt(0).toUpperCase() + name.slice(1),
         email: email.toLowerCase(),
-        phone: phone || '+91-99999-88888',
+        phone: phone || `+91-99999-${Math.floor(10000 + Math.random() * 90000)}`,
         age: 30 + Math.floor(Math.random() * 15),
       });
     }
@@ -430,19 +430,20 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
 
       const regionSuffix = targetRegion ? ` (${targetRegion})` : '';
       const industryPrefix = targetIndustry ? `${targetIndustry} - ` : '';
+      const randomSuffix = Math.floor(100 + Math.random() * 900);
 
       if (domain.includes('redbus')) {
         leads.push(
           {
             name: `Rajesh Sharma (${industryPrefix}RedBus Operations${regionSuffix})`,
-            email: "r.sharma@redbus.in",
-            phone: "+91-98765-12345",
+            email: `r.sharma.${randomSuffix}@redbus.in`,
+            phone: `+91-98765-${Math.floor(10000 + Math.random() * 90000)}`,
             age: 34,
           },
           {
             name: `Priya Nair (${industryPrefix}RedBus B2B Partnerships${regionSuffix})`,
-            email: "priya.nair@redbus.in",
-            phone: "+91-91234-56789",
+            email: `priya.nair.${randomSuffix}@redbus.in`,
+            phone: `+91-91234-${Math.floor(10000 + Math.random() * 90000)}`,
             age: 28,
           }
         );
@@ -450,14 +451,14 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
         leads.push(
           {
             name: `${industryPrefix}John Doe (${domain}${regionSuffix})`,
-            email: `j.doe@${domain}`,
-            phone: "+1-555-0199",
+            email: `j.doe.${randomSuffix}@${domain}`,
+            phone: `+1-555-${Math.floor(1000 + Math.random() * 9000)}`,
             age: 35,
           },
           {
             name: `${industryPrefix}Jane Smith (${domain}${regionSuffix})`,
-            email: `j.smith@${domain}`,
-            phone: "+1-555-0144",
+            email: `j.smith.${randomSuffix}@${domain}`,
+            phone: `+1-555-${Math.floor(1000 + Math.random() * 9000)}`,
             age: 29,
           }
         );
