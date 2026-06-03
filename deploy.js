@@ -76,10 +76,17 @@ async function main() {
   console.log("\n--- [5/5] Pushing Changes to Git Remote ---");
   try {
     const branchName = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
-    execSync(`git push -u origin ${branchName}`, {
-      stdio: 'inherit',
-      env: { ...process.env, GIT_SSH_COMMAND: 'ssh -o StrictHostKeyChecking=no' }
-    });
+    try {
+      execSync(`git push -u origin ${branchName}`, {
+        stdio: 'inherit',
+        env: { ...process.env, GIT_SSH_COMMAND: 'ssh -o StrictHostKeyChecking=no' }
+      });
+    } catch (sshErr) {
+      console.warn("SSH push failed (Permission denied / publickey). Trying HTTPS fallback...");
+      const httpsRemote = 'https://github.com/hariom-kumar/cognitive-crm-workspace.git';
+      execSync(`git remote set-url origin ${httpsRemote}`);
+      execSync(`git push -u origin ${branchName}`, { stdio: 'inherit' });
+    }
   } catch (err) {
     console.error("Push failed:", err.message);
     process.exit(1);
