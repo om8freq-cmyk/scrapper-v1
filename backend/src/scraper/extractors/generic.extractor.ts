@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Page } from 'playwright';
+import OpenAI from 'openai';
 
 export interface ScrapeConfig {
   containerSelector?: string;
@@ -16,11 +18,99 @@ export interface RawLead {
   phone?: string;
 }
 
+
 @Injectable()
 export class GenericExtractor {
   private readonly logger = new Logger(GenericExtractor.name);
+  private openai?: OpenAI;
+
+  constructor(private readonly configService: ConfigService) {
+    const apiKey = this.configService.get<string>('OPENAI_API_KEY') || process.env.OPENAI_API_KEY;
+    if (apiKey && apiKey !== 'YOUR_OPENAI_API_KEY') {
+      this.openai = new OpenAI({ apiKey });
+      this.logger.log('OpenAI client initialized for structured extraction');
+    } else {
+      this.logger.warn('No valid OPENAI_API_KEY found. Falling back to selector-based extraction');
+    }
+  }
 
   async extract(page: Page, config?: ScrapeConfig): Promise<RawLead[]> {
+    const targetUrl = page.url();
+    
+    // Check if we can use OpenAI
+    if (this.openai) {
+      try {
+        this.logger.log(`Invoking OpenAI structured extraction for URL: ${targetUrl}`);
+        
+        // Extract raw inner text from page, cleaning up extra whitespaces, capped to 25k chars
+        const pageText = await page.evaluate(() => {
+          return document.body.innerText.replace(/\s+/g, ' ').substring(0, 25000);
+        });
+
+        const prompt = `
+          You are an expert lead generation AI. Analyze the following unstructured text content scraped from a webpage and extract contact information of prospective leads.
+          
+          Extract leads matching the following properties:
+          - name (Full name of person or business contact)
+          - email (Must be a valid email address)
+          - phone (Include if available, else null)
+          - age (Numeric age if available, else null)
+
+          Return a JSON object matching this exact format:
+          {
+            "leads": [
+              {
+                "name": "John Doe",
+                "email": "john.doe@example.com",
+                "phone": "+15555555555",
+                "age": 35
+              }
+            ]
+          }
+
+          If no leads with valid email addresses are found, return an empty array: {"leads": []}.
+
+          Unstructured Webpage Text Content:
+          ${pageText}
+        `;
+
+        const completion = await this.openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+        });
+
+        const resultText = completion.choices[0]?.message?.content || '{}';
+        const parsed = JSON.parse(resultText);
+
+        if (parsed.leads && Array.isArray(parsed.leads)) {
+          const leads: RawLead[] = [];
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+          for (const lead of parsed.leads) {
+            if (lead.name && lead.email) {
+              const email = lead.email.trim().toLowerCase();
+              if (emailRegex.test(email)) {
+                leads.push({
+                  name: lead.name.trim(),
+                  age: typeof lead.age === 'number' ? lead.age : undefined,
+                  email,
+                  phone: lead.phone ? String(lead.phone).trim() : undefined,
+                });
+              }
+            }
+          }
+          this.logger.log(`OpenAI extracted ${leads.length} validated leads.`);
+          if (leads.length > 0) {
+            return leads;
+          }
+        }
+      } catch (err: any) {
+        this.logger.error(`OpenAI structured extraction failed: ${err.message}. Falling back to selectors.`);
+      }
+    }
+
     const containerSelector = config?.containerSelector || 'tr, .card, .list-item, [data-lead]';
     const nameSelector = config?.nameSelector || '.name, [data-name], td:nth-child(1)';
     const ageSelector = config?.ageSelector || '.age, [data-age], td:nth-child(2)';
@@ -36,8 +126,6 @@ export class GenericExtractor {
         const leads: Array<{ name: string; age?: string; email: string; phone?: string }> = [];
 
         for (const container of containers) {
-          // Find text content inside this container matching the selectors
-          // We query relative to the container. If not found, check the container itself.
           const nameEl = container.querySelector(nameSel) || (container.matches(nameSel) ? container : null);
           const ageEl = container.querySelector(ageSel) || (container.matches(ageSel) ? container : null);
           const emailEl = container.querySelector(emailSel) || (container.matches(emailSel) ? container : null);
@@ -48,7 +136,6 @@ export class GenericExtractor {
           let email = '';
           let phone = '';
 
-          // For email, if it is an <a> tag with href, try to extract from href mailto:
           if (emailEl) {
             if (emailEl.tagName === 'A' && emailEl.getAttribute('href')?.startsWith('mailto:')) {
               email = emailEl.getAttribute('href')?.replace('mailto:', '').split('?')[0] || '';
@@ -57,7 +144,6 @@ export class GenericExtractor {
             }
           }
 
-          // For phone, if it is an <a> tag with href, try to extract from href tel:
           if (phoneEl) {
             if (phoneEl.tagName === 'A' && phoneEl.getAttribute('href')?.startsWith('tel:')) {
               phone = phoneEl.getAttribute('href')?.replace('tel:', '').split('?')[0] || '';
@@ -93,13 +179,11 @@ export class GenericExtractor {
         continue;
       }
 
-      // Validate email
       const email = lead.email.toLowerCase();
       if (!emailRegex.test(email)) {
         continue;
       }
 
-      // Parse age
       let age: number | undefined = undefined;
       if (lead.age) {
         const parsedAge = parseInt(lead.age, 10);
@@ -108,10 +192,8 @@ export class GenericExtractor {
         }
       }
 
-      // Normalize phone
       let phone: string | undefined = undefined;
       if (lead.phone) {
-        // Strip non-digits except +
         const cleanedPhone = lead.phone.replace(/[^\d+]/g, '');
         if (cleanedPhone.length >= 7) {
           phone = cleanedPhone;
@@ -119,7 +201,7 @@ export class GenericExtractor {
       }
 
       validatedLeads.push({
-        name: lead.name.replace(/\s+/g, ' '), // Normalize spaces
+        name: lead.name.replace(/\s+/g, ' '),
         age,
         email,
         phone,
@@ -130,3 +212,4 @@ export class GenericExtractor {
     return validatedLeads;
   }
 }
+

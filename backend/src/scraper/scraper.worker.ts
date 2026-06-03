@@ -22,6 +22,8 @@ const VIEWPORTS = [
   { width: 1536, height: 864 },
 ];
 
+import { SettingsService } from '../settings/settings.service';
+
 @Injectable()
 export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ScraperWorker.name);
@@ -32,14 +34,16 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
     private readonly configService: ConfigService,
     private readonly leadsService: LeadsService,
     private readonly extractor: GenericExtractor,
+    private readonly settingsService: SettingsService,
     @InjectQueue('email-queue') private readonly emailQueue: Queue,
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     const host = this.configService.get<string>('REDIS_HOST', 'localhost');
     const port = this.configService.get<number>('REDIS_PORT', 6379);
 
-    const maxConcurrency = Number(this.configService.get<number>('SCRAPER_MAX_CONCURRENCY', 2));
+    const concurrencyStr = await this.settingsService.getSetting('concurrency');
+    const maxConcurrency = Number(concurrencyStr) || 2;
 
     this.worker = new Worker(
       'scrape-queue',
@@ -60,7 +64,7 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Scraper Job ${job?.id} failed: ${err.message}`);
     });
 
-    this.logger.log('Scraper worker initialized');
+    this.logger.log(`Scraper worker initialized with concurrency: ${maxConcurrency}`);
   }
 
   async onModuleDestroy() {
@@ -114,7 +118,8 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       });
 
       // Pacing delay
-      const delay = Number(this.configService.get<number>('SCRAPER_REQUEST_DELAY_MS', 1500));
+      const delayStr = await this.settingsService.getSetting('delay');
+      const delay = Number(delayStr) || 1500;
       await page.waitForTimeout(delay);
 
       // Extract raw data

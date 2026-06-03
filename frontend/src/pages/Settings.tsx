@@ -1,13 +1,73 @@
-import React from 'react';
-import { Mail, Shield, Globe, Cpu } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Mail, Shield, Globe } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
+import useStore from '@/store/useStore';
 
 export const Settings: React.FC = () => {
-  const handleSave = (e: React.FormEvent) => {
+  const { settings, fetchSettings, updateSettings } = useStore();
+
+  const [concurrency, setConcurrency] = useState('3');
+  const [delay, setDelay] = useState('1500');
+  const [retries, setRetries] = useState('3');
+  const [smtpHost, setSmtpHost] = useState('smtp.ethereal.email');
+  const [smtpPort, setSmtpPort] = useState('587');
+  const [smtpUser, setSmtpUser] = useState('your_ethereal_user@ethereal.email');
+  const [smtpPass, setSmtpPass] = useState('');
+  
+  const [isSaving, setIsSaving] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  useEffect(() => {
+    if (settings) {
+      setConcurrency(settings['concurrency'] || '3');
+      setDelay(settings['delay'] || '1500');
+      setRetries(settings['retries'] || '3');
+      setSmtpHost(settings['smtp-host'] || 'smtp.ethereal.email');
+      setSmtpPort(settings['smtp-port'] || '587');
+      setSmtpUser(settings['smtp-user'] || 'your_ethereal_user@ethereal.email');
+      setSmtpPass(settings['smtp-pass'] || '');
+    }
+  }, [settings]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Settings successfully updated locally (backed by environment configurations).');
+    setIsSaving(true);
+    try {
+      await updateSettings({
+        'concurrency': concurrency,
+        'delay': delay,
+        'retries': retries,
+        'smtp-host': smtpHost,
+        'smtp-port': smtpPort,
+        'smtp-user': smtpUser,
+        'smtp-pass': smtpPass,
+      });
+      alert('Settings successfully updated.');
+    } catch (err: any) {
+      alert(`Failed to save settings: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setIsResetting(true);
+    setConcurrency('3');
+    setDelay('1500');
+    setRetries('3');
+    setSmtpHost('smtp.ethereal.email');
+    setSmtpPort('587');
+    setSmtpUser('your_ethereal_user@ethereal.email');
+    setSmtpPass('');
+    setTimeout(() => {
+      setIsResetting(false);
+    }, 300);
   };
 
   return (
@@ -41,22 +101,25 @@ export const Settings: React.FC = () => {
               id="concurrency"
               label="Max Concurrency Workers"
               type="number"
-              defaultValue="3"
-              disabled
+              value={concurrency}
+              onChange={(e) => setConcurrency(e.target.value)}
+              required
             />
             <Input
               id="delay"
               label="Request Delay Pace (milliseconds)"
               type="number"
-              defaultValue="1500"
-              disabled
+              value={delay}
+              onChange={(e) => setDelay(e.target.value)}
+              required
             />
             <Input
               id="retries"
               label="Failed Job Max Retries"
               type="number"
-              defaultValue="3"
-              disabled
+              value={retries}
+              onChange={(e) => setRetries(e.target.value)}
+              required
             />
           </div>
         </Card>
@@ -80,8 +143,9 @@ export const Settings: React.FC = () => {
               id="smtp-host"
               label="SMTP Relayer Host"
               type="text"
-              defaultValue="smtp.ethereal.email"
-              disabled
+              value={smtpHost}
+              onChange={(e) => setSmtpHost(e.target.value)}
+              required
             />
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
@@ -89,24 +153,27 @@ export const Settings: React.FC = () => {
                   id="smtp-user"
                   label="SMTP Account User"
                   type="text"
-                  defaultValue="your_ethereal_user@ethereal.email"
-                  disabled
+                  value={smtpUser}
+                  onChange={(e) => setSmtpUser(e.target.value)}
+                  required
                 />
               </div>
               <Input
                 id="smtp-port"
                 label="Port"
                 type="number"
-                defaultValue="587"
-                disabled
+                value={smtpPort}
+                onChange={(e) => setSmtpPort(e.target.value)}
+                required
               />
             </div>
             <Input
               id="smtp-pass"
               label="SMTP Secret Key (Password)"
               type="password"
-              defaultValue="••••••••••••••••"
-              disabled
+              value={smtpPass}
+              onChange={(e) => setSmtpPass(e.target.value)}
+              placeholder="Leave blank to keep unchanged"
             />
           </div>
         </Card>
@@ -142,8 +209,12 @@ export const Settings: React.FC = () => {
         </Card>
 
         <div className="md:col-span-2 flex justify-end space-x-2">
-          <Button variant="secondary" type="button" disabled>Reset Defaults</Button>
-          <Button variant="primary" type="submit">Apply Updates</Button>
+          <Button variant="secondary" type="button" onClick={handleReset} disabled={isResetting}>
+            Reset Defaults
+          </Button>
+          <Button variant="primary" type="submit" disabled={isSaving}>
+            {isSaving ? 'Applying...' : 'Apply Updates'}
+          </Button>
         </div>
       </form>
     </div>

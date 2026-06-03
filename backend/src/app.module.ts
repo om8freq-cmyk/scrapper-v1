@@ -7,6 +7,8 @@ import { LeadsModule } from './leads/leads.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { EmailModule } from './email/email.module';
 import { QueueModule } from './queue/queue.module';
+import { SettingsModule } from './settings/settings.module';
+import { CommunicationModule } from './communication/communication.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { QueueModule } from './queue/queue.module';
     ScraperModule,
     EmailModule,
     QueueModule,
+    SettingsModule,
+    CommunicationModule,
   ],
 })
 export class AppModule {}

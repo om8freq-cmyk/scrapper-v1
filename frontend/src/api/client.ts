@@ -60,4 +60,14 @@ export async function createScrapeJob(jobData: { targetUrl: string; config?: Rec
   return data;
 }
 
+export async function getSettings(): Promise<Record<string, string>> {
+  const { data } = await client.get<Record<string, string>>('/settings');
+  return data;
+}
+
+export async function updateSettings(settings: Record<string, string>): Promise<Record<string, string>> {
+  const { data } = await client.patch<Record<string, string>>('/settings', settings);
+  return data;
+}
+
 export default client;

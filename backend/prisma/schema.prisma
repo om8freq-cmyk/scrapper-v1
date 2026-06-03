@@ -54,3 +54,18 @@ enum JobStatus {
   COMPLETED
   FAILED
 }
+
+model SystemSetting {
+  key   String @id
+  value String
+}
+
+model MessageLog {
+  id        String   @id @default(uuid())
+  leadId    String
+  direction String   // "INBOUND" or "OUTBOUND"
+  channel   String   // "EMAIL" or "WHATSAPP"
+  message   String
+  createdAt DateTime @default(now())
+}
+

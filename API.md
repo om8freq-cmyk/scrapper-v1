@@ -142,41 +142,81 @@ Democratize data mining by updating mappings between platform scraper outputs an
 
 ---
 
-## 3. AI Agent Meta-Communication APIs
+## 3. Communication & Webhook APIs
 
-Enables incoming messages (webchat, SMS, WhatsApp) to be resolved by the Dynamic AI Agent Core, adjusting vocabulary contexts and workflow parameters instantly.
+Enables incoming customer replies (via SMS, WhatsApp, or other messaging channels) to be captured, logged, and routed for pipeline progression.
 
 ### 3.1 Inbound Communication Webhook
-* **Endpoint**: `POST /webhook/communication/inbound`
-* **Headers**:
-  - `x-tenant-id`: `UUID` (Required)
+* **Endpoint**: `POST /api/v1/webhooks/communication/inbound`
 * **Request Body**:
 ```json
 {
   "contactPhone": "+919876543210",
-  "messageBody": "Please update my diagnosis files. I would like to set up my cardiology clinic consult session for next Monday."
+  "messageBody": "I am interested in joining next week, please count me in!",
+  "channel": "WHATSAPP"
 }
 ```
-* **Response (`200 OK` - AI Intent Routed to Stage Change & Logs)**:
+* **Response (`200 OK`)**:
 ```json
 {
   "success": true,
-  "intent": "update_lead_stage",
-  "actionExecuted": {
-    "leadId": "7a90f23d-c119-450c-b26a-1bbcdde99ff8",
-    "updatedField": "status_stage_id",
-    "newValue": "scheduled",
-    "reasoning": "User requested scheduling a consultation session next Monday."
-  },
-  "aiResponse": "I have successfully scheduled your consultation. Our medical triage team has updated your patient record and marked the appointment stage."
+  "message": "Inbound message processed and status updated.",
+  "data": {
+    "logId": "f74fb903-f315-43db-8827-b7a102b5ffd1",
+    "leadId": "3a607e07-1a47-4b9d-b2bc-acb3c2cc52d4",
+    "newStatus": "CONTACTED"
+  }
 }
 ```
 
 ---
 
-## 4. Tenant Onboarding & Settings APIs
+## 4. System Settings APIs
 
-### 4.1 Onboard New Business Tenant
+Provides endpoints to read and update dynamic system-wide scraper configuration and SMTP mailing gateway credentials.
+
+### 4.1 Fetch System Settings
+* **Endpoint**: `GET /api/settings`
+* **Response (`200 OK`)**:
+```json
+{
+  "concurrency": "3",
+  "delay": "1500",
+  "retries": "3",
+  "smtp-host": "smtp.ethereal.email",
+  "smtp-port": "587",
+  "smtp-user": "your_ethereal_user@ethereal.email",
+  "smtp-pass": "your_ethereal_password"
+}
+```
+
+### 4.2 Update System Settings
+* **Endpoint**: `PATCH /api/settings`
+* **Request Body**:
+```json
+{
+  "concurrency": "4",
+  "delay": "2000"
+}
+```
+* **Response (`200 OK`)**:
+```json
+{
+  "concurrency": "4",
+  "delay": "2000",
+  "retries": "3",
+  "smtp-host": "smtp.ethereal.email",
+  "smtp-port": "587",
+  "smtp-user": "your_ethereal_user@ethereal.email",
+  "smtp-pass": "your_ethereal_password"
+}
+```
+
+---
+
+## 5. Tenant Onboarding & Settings APIs
+
+### 5.1 Onboard New Business Tenant
 * **Endpoint**: `POST /api/tenants/onboard`
 * **Request Body**:
 ```json
@@ -185,7 +225,7 @@ Enables incoming messages (webchat, SMS, WhatsApp) to be resolved by the Dynamic
   "industryProfile": "healthcare"
 }
 ```
-* **Response (`201 Created` - Seeds dynamic schemas and vocab structures)**:
+* **Response (`201 Created`)**:
 ```json
 {
   "success": true,

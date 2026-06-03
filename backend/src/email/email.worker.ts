@@ -9,6 +9,7 @@ import { LeadStatus } from '@prisma/client';
 export class EmailWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EmailWorker.name);
   private worker!: Worker;
+  private checkInterval!: NodeJS.Timeout;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -43,12 +44,29 @@ export class EmailWorker implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Email Job ${job?.id} failed: ${err.message}`);
     });
 
-    this.logger.log('Email worker initialized');
+    // Run dynamic evaluation every hour
+    this.checkInterval = setInterval(() => {
+      this.checkAndSendFollowUps().catch((err) => {
+        this.logger.error(`Error in periodic follow-ups evaluation: ${err.message}`);
+      });
+    }, 60 * 60 * 1000);
+
+    // Initial check after 5 seconds
+    setTimeout(() => {
+      this.checkAndSendFollowUps().catch((err) => {
+        this.logger.error(`Error in initial follow-ups evaluation: ${err.message}`);
+      });
+    }, 5000);
+
+    this.logger.log('Email worker initialized with automated follow-ups cron checker');
   }
 
   async onModuleDestroy() {
     if (this.worker) {
       await this.worker.close();
+    }
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
     }
   }
 
@@ -57,7 +75,6 @@ export class EmailWorker implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`Processing email job for Lead: ${name} <${email}>`);
 
     try {
-      // Find the lead first to check if they still exist
       const lead = await this.prisma.lead.findUnique({
         where: { id: leadId },
       });
@@ -66,7 +83,7 @@ export class EmailWorker implements OnModuleInit, OnModuleDestroy {
         throw new Error(`Lead with ID ${leadId} not found`);
       }
 
-      // Send the email
+      // Send the welcome email
       await this.emailService.sendWelcomeEmail({ name, email });
 
       // Update lead status
@@ -75,6 +92,16 @@ export class EmailWorker implements OnModuleInit, OnModuleDestroy {
         data: {
           status: LeadStatus.EMAIL_SENT,
           emailSentAt: new Date(),
+        },
+      });
+
+      // Log outbound message into the interaction timeline
+      await this.prisma.messageLog.create({
+        data: {
+          leadId,
+          direction: 'OUTBOUND',
+          channel: 'EMAIL',
+          message: 'Welcome email successfully sent.',
         },
       });
 
@@ -95,6 +122,54 @@ export class EmailWorker implements OnModuleInit, OnModuleDestroy {
       }
 
       throw error;
+    }
+  }
+
+  async checkAndSendFollowUps() {
+    this.logger.log('Running automated follow-up evaluation (72-hour rule)...');
+    
+    // Find all leads that are in EMAIL_SENT status and haven't had an update or response in 72 hours
+    const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000);
+    const staleLeads = await this.prisma.lead.findMany({
+      where: {
+        status: LeadStatus.EMAIL_SENT,
+        emailSentAt: { lte: seventyTwoHoursAgo },
+      },
+    });
+
+    if (staleLeads.length === 0) {
+      this.logger.log('No stale leads requiring follow-up emails.');
+      return;
+    }
+
+    this.logger.log(`Found ${staleLeads.length} leads requiring follow-ups.`);
+
+    for (const lead of staleLeads) {
+      try {
+        await this.emailService.sendFollowUpEmail({ name: lead.name, email: lead.email });
+
+        // Update emailSentAt to avoid repeating follow-ups
+        await this.prisma.lead.update({
+          where: { id: lead.id },
+          data: {
+            emailSentAt: new Date(),
+          },
+        });
+
+        // Log the follow-up email to MessageLog
+        await this.prisma.messageLog.create({
+          data: {
+            leadId: lead.id,
+            direction: 'OUTBOUND',
+            channel: 'EMAIL',
+            message: 'Follow-up email dispatched automatically after 72 hours of no response.',
+          },
+        });
+
+        this.logger.log(`Follow-up email successfully sent to ${lead.email}`);
+      } catch (error: any) {
+        this.logger.error(`Failed to dispatch follow-up to ${lead.email}: ${error.message}`);
+      }
     }
   }
 }

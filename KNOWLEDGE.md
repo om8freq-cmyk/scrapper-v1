@@ -220,4 +220,21 @@ npm run start:dev
 
 ---
 
+## 10. System Configurations & Messaging Pipelines
+
+### 10.1 System Configurations (`SystemSetting` Model)
+Dynamic configuration constants are stored within the database to prevent server restarts during operational changes:
+* `concurrency`: Dictates backend scraper execution worker count.
+* `delay`: Pacing timeout in milliseconds used by the headless browser to throttle crawls.
+* `retries`: Playwright retry limits on target layout failures.
+* `smtp-host` / `smtp-port` / `smtp-user` / `smtp-pass`: Live relayer endpoints used by Nodemailer.
+
+### 10.2 Communication Logs & Automated Outbound Campaign
+To audit outbound message states and verify response paths:
+* **Outbound Timeline**: Outbound welcome emails and subsequent follow-ups are appended to the `MessageLog` schema.
+* **72-Hour Drip Cron Rule**: The background `EmailWorker` executes a periodic checker evaluating whether a lead has remained in `EMAIL_SENT` status for more than 72 hours without response, dispatching a custom follow-up if required.
+* **Inbound Gateway Webhook**: Public routing catching inbound SMS/WhatsApp replies. Webhook updates targets to the `CONTACTED` column status and records comments to `MessageLog` instantly.
+
+---
+
 *© 2026 Cognitive CRM. All rights reserved.*

@@ -34,6 +34,11 @@ interface AppState {
   setSearchQuery: (query: string) => void;
   statusFilter: LeadStatus | 'ALL';
   setStatusFilter: (status: LeadStatus | 'ALL') => void;
+
+  // Settings
+  settings: Record<string, string> | null;
+  fetchSettings: () => Promise<void>;
+  updateSettings: (settings: Record<string, string>) => Promise<void>;
 }
 
 function getSystemTheme(): Theme {
@@ -137,6 +142,28 @@ const useStore = create<AppState>((set, get) => ({
 
   setStatusFilter: (status: LeadStatus | 'ALL') => {
     set({ statusFilter: status, currentPage: 1 });
+  },
+
+  // Settings
+  settings: null,
+
+  fetchSettings: async () => {
+    try {
+      const settings = await api.getSettings();
+      set({ settings });
+    } catch (err) {
+      console.error('Failed to fetch settings:', err);
+    }
+  },
+
+  updateSettings: async (newSettings: Record<string, string>) => {
+    try {
+      const settings = await api.updateSettings(newSettings);
+      set({ settings });
+    } catch (err) {
+      console.error('Failed to update settings:', err);
+      throw err;
+    }
   },
 }));
 

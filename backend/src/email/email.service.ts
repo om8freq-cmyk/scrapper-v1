@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SettingsService } from '../settings/settings.service';
 import * as nodemailer from 'nodemailer';
 import * as handlebars from 'handlebars';
 import * as fs from 'fs';
@@ -11,15 +12,27 @@ export class EmailService implements OnModuleInit {
   private transporter!: nodemailer.Transporter;
   private templates: Record<string, handlebars.TemplateDelegate> = {};
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly settingsService: SettingsService,
+  ) {}
 
   async onModuleInit() {
-    const host = this.configService.get<string>('SMTP_HOST', 'smtp.ethereal.email');
-    const port = this.configService.get<number>('SMTP_PORT', 587);
-    const secure = this.configService.get<boolean>('SMTP_SECURE', false);
-    const user = this.configService.get<string>('SMTP_USER', '');
-    const pass = this.configService.get<string>('SMTP_PASS', '');
+    await this.initTransporter();
 
+    // Load templates
+    this.loadTemplate('welcome-lead');
+  }
+
+  async initTransporter() {
+    const host = await this.settingsService.getSetting('smtp-host');
+    const portStr = await this.settingsService.getSetting('smtp-port');
+    const port = Number(portStr) || 587;
+    const secure = port === 465;
+    const user = await this.settingsService.getSetting('smtp-user');
+    const pass = await this.settingsService.getSetting('smtp-pass');
+
+    this.logger.log(`Initializing SMTP transport for ${host}:${port} (user: ${user})...`);
     this.transporter = nodemailer.createTransport({
       host,
       port,
@@ -36,14 +49,10 @@ export class EmailService implements OnModuleInit {
     } catch (err: any) {
       this.logger.error(`SMTP Connection failed verification: ${err.message}`);
     }
-
-    // Load templates
-    this.loadTemplate('welcome-lead');
   }
 
   private loadTemplate(name: string) {
     try {
-      // Check multiple locations for template to handle source code vs build dist directory
       const searchPaths = [
         path.join(__dirname, 'templates', `${name}.hbs`),
         path.join(__dirname, '..', 'email', 'templates', `${name}.hbs`),
@@ -69,7 +78,6 @@ export class EmailService implements OnModuleInit {
     } catch (error: any) {
       this.logger.error(`Failed to load email template "${name}": ${error.message}`);
       
-      // Fallback template in code if file loading fails
       if (name === 'welcome-lead') {
         const fallbackSource = `
           <h1>Hello {{name}}!</h1>
@@ -108,6 +116,25 @@ export class EmailService implements OnModuleInit {
       from,
       to: lead.email,
       subject: `Introduction from Cognitive CRM — Synergies with ${lead.name}`,
+      html,
+      text,
+    });
+  }
+
+  async sendFollowUpEmail(lead: { name: string; email: string }): Promise<nodemailer.SentMessageInfo> {
+    const from = this.configService.get<string>('SMTP_FROM', '"Cognitive CRM" <noreply@cognitivecrm.com>');
+    const html = `
+      <h1>Hi ${lead.name},</h1>
+      <p>Just checking in on my previous email. We would love to connect and discuss synergies.</p>
+      <p>Best regards,<br/>Cognitive CRM Team</p>
+    `;
+    const text = `Hi ${lead.name}, just checking in on my previous email. Let's connect.`;
+
+    this.logger.log(`Sending follow-up email to ${lead.email}`);
+    return this.transporter.sendMail({
+      from,
+      to: lead.email,
+      subject: `Follow up: Synergies with ${lead.name}`,
       html,
       text,
     });
