@@ -76,8 +76,10 @@ async function main() {
   console.log("\n--- [5/5] Pushing Changes to Git Remote ---");
   try {
     const branchName = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
-    console.log(`Pushing current branch "${branchName}" to origin...`);
-    execSync(`git push -u origin ${branchName}`, { stdio: 'inherit' });
+    execSync(`git push -u origin ${branchName}`, {
+      stdio: 'inherit',
+      env: { ...process.env, GIT_SSH_COMMAND: 'ssh -o StrictHostKeyChecking=no' }
+    });
   } catch (err) {
     console.error("Push failed:", err.message);
     process.exit(1);
