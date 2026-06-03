@@ -14,6 +14,7 @@ export const Badge: React.FC<BadgeProps> = ({ status }) => {
     [LeadStatus.EMAIL_FAILED]: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.1)]',
     [LeadStatus.CONTACTED]: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 shadow-[0_0_8px_rgba(168,85,247,0.1)]',
     [LeadStatus.CONVERTED]: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 shadow-[0_0_8px_rgba(20,184,166,0.1)]',
+    [LeadStatus.INCOMPLETE]: 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/20 shadow-[0_0_8px_rgba(148,163,184,0.1)]',
     
     // Job statuses
     PENDING: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20',
@@ -29,6 +30,7 @@ export const Badge: React.FC<BadgeProps> = ({ status }) => {
     [LeadStatus.EMAIL_FAILED]: 'Email Failed',
     [LeadStatus.CONTACTED]: 'Contacted',
     [LeadStatus.CONVERTED]: 'Converted',
+    [LeadStatus.INCOMPLETE]: 'Incomplete',
     PENDING: 'Pending',
     RUNNING: 'Running',
     COMPLETED: 'Completed',

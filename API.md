@@ -110,35 +110,70 @@ End-to-end CRM lead queries adapt automatically to the tenant's registered vocab
 
 ---
 
-## 2. Scraper Configuration APIs
+## 2. Scraper Configuration & Job APIs
 
-Democratize data mining by updating mappings between platform scraper outputs and local columns.
+Democratize data mining by updating mappings between platform scraper outputs and local columns and launching automation scraping workers.
 
 ### 2.1 Set Up Scraper Wizard Config
 * **Endpoint**: `POST /api/scraper/configs`
 * **Headers**:
   - `x-tenant-id`: `UUID` (Required)
 * **Request Body**:
-```json
-{
-  "name": "Google Maps Dental Clinics",
-  "sources": ["google_maps"],
-  "search_keywords": ["Dental Clinics", "Orthodontists"],
-  "target_locations": ["Mumbai, MH", "Pune, MH"],
-  "field_mappings": {
-    "patient_name": "name",
-    "primary_ailment": "category",
-    "insurance_provider": "unstructured_metadata.insurance_accepted"
+  ```json
+  {
+    "name": "Google Maps Dental Clinics",
+    "sources": ["google_maps"],
+    "search_keywords": ["Dental Clinics", "Orthodontists"],
+    "target_locations": ["Mumbai, MH", "Pune, MH"],
+    "field_mappings": {
+      "patient_name": "name",
+      "primary_ailment": "category",
+      "insurance_provider": "unstructured_metadata.insurance_accepted"
+    }
   }
-}
-```
+  ```
 * **Response (`201 Created`)**:
-```json
-{
-  "success": true,
-  "configId": "e1f13bc4-00e1-4560-84a2-94776101c518"
-}
-```
+  ```json
+  {
+    "success": true,
+    "configId": "e1f13bc4-00e1-4560-84a2-94776101c518"
+  }
+  ```
+
+### 2.2 Launch Scraper Automation Job
+* **Endpoint**: `POST /api/scraper/jobs`
+* **Request Body (URL Mode)**:
+  ```json
+  {
+    "targetUrl": "https://example.com/directory",
+    "config": {
+      "mode": "url",
+      "deepLinkTraversal": true
+    }
+  }
+  ```
+* **Request Body (Omni-Discovery Search Mode)**:
+  ```json
+  {
+    "targetUrl": "Omni-Discovery: Restaurant in Mumbai",
+    "config": {
+      "mode": "omni",
+      "targetIndustry": "Restaurant",
+      "targetRegion": "Mumbai",
+      "deepLinkTraversal": true
+    }
+  }
+  ```
+* **Response (`201 Created`)**:
+  ```json
+  {
+    "id": "job_uuid_12345",
+    "targetUrl": "Omni-Discovery: Restaurant in Mumbai",
+    "status": "PENDING",
+    "leadsFound": 0,
+    "createdAt": "2026-06-03T11:00:00Z"
+  }
+  ```
 
 ---
 

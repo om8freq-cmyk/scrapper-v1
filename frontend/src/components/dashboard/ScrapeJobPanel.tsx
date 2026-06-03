@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import { Badge } from '../ui/Badge';
-import { JobStatus } from '@/types';
+import { JobStatus, ScrapeJob } from '@/types';
 import * as api from '@/api/client';
 
 export const ScrapeJobPanel: React.FC = () => {
@@ -14,6 +14,7 @@ export const ScrapeJobPanel: React.FC = () => {
   
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [scrapeMode, setScrapeMode] = useState<'url' | 'omni'>('url');
   const [targetUrl, setTargetUrl] = useState('');
   const [showConfig, setShowConfig] = useState(false);
   
@@ -27,7 +28,7 @@ export const ScrapeJobPanel: React.FC = () => {
   // Target matching variables
   const [targetIndustry, setTargetIndustry] = useState('Restaurant');
   const [targetRegion, setTargetRegion] = useState('');
-  const [deepLinkTraversal, setDeepLinkTraversal] = useState(false);
+  const [deepLinkTraversal, setDeepLinkTraversal] = useState(true);
 
   useEffect(() => {
     fetchScrapeJobs();
@@ -40,11 +41,17 @@ export const ScrapeJobPanel: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetUrl) return;
+
+    const finalTargetUrl = scrapeMode === 'omni' 
+      ? `Omni-Discovery: ${targetIndustry} in ${targetRegion || 'Any Region'}` 
+      : targetUrl;
+
+    if (!finalTargetUrl) return;
 
     try {
       setIsSubmitting(true);
       const config: Record<string, any> = {
+        mode: scrapeMode,
         targetIndustry,
         targetRegion,
         deepLinkTraversal,
@@ -56,7 +63,7 @@ export const ScrapeJobPanel: React.FC = () => {
       if (ageSelector) config.ageSelector = ageSelector;
 
       await api.createScrapeJob({
-        targetUrl,
+        targetUrl: finalTargetUrl,
         config: Object.keys(config).length > 0 ? config : undefined,
       });
 
@@ -69,7 +76,7 @@ export const ScrapeJobPanel: React.FC = () => {
       setAgeSelector('');
       setTargetIndustry('Restaurant');
       setTargetRegion('');
-      setDeepLinkTraversal(false);
+      setDeepLinkTraversal(true);
       setShowConfig(false);
       setIsOpen(false);
       
@@ -83,13 +90,12 @@ export const ScrapeJobPanel: React.FC = () => {
   };
 
   // Mock scrape jobs fallback if backend yields nothing
-  const mockJobs = [
+  const mockJobs: ScrapeJob[] = [
     { id: '1', targetUrl: 'https://news.ycombinator.com/jobs', status: JobStatus.COMPLETED, leadsFound: 14, createdAt: '2026-06-01T15:20:00Z', completedAt: '2026-06-01T15:21:10Z' },
     { id: '2', targetUrl: 'https://reddit.com/r/startups', status: JobStatus.RUNNING, leadsFound: 0, createdAt: '2026-06-01T17:50:00Z' },
-    { id: '3', targetUrl: 'https://invalid-site-domain.xyz', status: JobStatus.FAILED, leadsFound: 0, error: 'Navigation timeout of 30000ms exceeded', createdAt: '2026-05-31T11:00:00Z', completedAt: '2026-05-31T11:00:30Z' },
   ];
 
-  const displayedJobs = scrapeJobs.length > 0 ? scrapeJobs : mockJobs;
+  const displayedJobs: ScrapeJob[] = scrapeJobs.length > 0 ? scrapeJobs : mockJobs;
 
   return (
     <div className="space-y-5">
@@ -168,45 +174,67 @@ export const ScrapeJobPanel: React.FC = () => {
         title="Launch New Scraper"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            id="target-url"
-            label="Target Website URL"
-            type="url"
-            required
-            placeholder="https://example.com/directory"
-            value={targetUrl}
-            onChange={(e) => setTargetUrl(e.target.value)}
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="target-industry" className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
-                Target Industry
-              </label>
-              <select
-                id="target-industry"
-                value={targetIndustry}
-                onChange={(e) => setTargetIndustry(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-950/40 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              >
-                <option value="Restaurant">Restaurant</option>
-                <option value="Hospital/Clinic">Hospital/Clinic</option>
-                <option value="Softtoy Business">Softtoy Business</option>
-                <option value="Clothing/Cloth">Clothing/Cloth</option>
-                <option value="Construction Field">Construction Field</option>
-              </select>
-            </div>
-            
-            <Input
-              id="target-region"
-              label="Target Region"
-              placeholder="e.g. Chennai, Mumbai"
-              value={targetRegion}
-              onChange={(e) => setTargetRegion(e.target.value)}
-            />
+          
+          {/* Mode Selector Toggle */}
+          <div className="flex border-b border-slate-200 dark:border-slate-800 mb-4">
+            <button
+              type="button"
+              className={`flex-1 pb-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${scrapeMode === 'url' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600'}`}
+              onClick={() => setScrapeMode('url')}
+            >
+              Target Website URL Mode
+            </button>
+            <button
+              type="button"
+              className={`flex-1 pb-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${scrapeMode === 'omni' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600'}`}
+              onClick={() => setScrapeMode('omni')}
+            >
+              Omni-Discovery Search
+            </button>
           </div>
 
-          <div className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+          {scrapeMode === 'url' ? (
+            <Input
+              id="target-url"
+              label="Target Website URL"
+              type="url"
+              required={scrapeMode === 'url'}
+              placeholder="https://example.com/directory"
+              value={targetUrl}
+              onChange={(e) => setTargetUrl(e.target.value)}
+            />
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="target-industry" className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
+                  Target Industry / Business Type
+                </label>
+                <select
+                  id="target-industry"
+                  value={targetIndustry}
+                  onChange={(e) => setTargetIndustry(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                >
+                  <option value="Restaurant">Restaurant</option>
+                  <option value="Hospital/Clinic">Hospital/Clinic</option>
+                  <option value="Softtoy Business">Softtoy Business</option>
+                  <option value="Clothing/Cloth">Clothing/Cloth</option>
+                  <option value="Construction Field">Construction Field</option>
+                </select>
+              </div>
+
+              <Input
+                id="target-region"
+                label="Target Region / Location"
+                required={scrapeMode === 'omni'}
+                placeholder="e.g. Chennai, Mumbai"
+                value={targetRegion}
+                onChange={(e) => setTargetRegion(e.target.value)}
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/20">
             <div className="space-y-0.5">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Deep Link Traversal</span>
               <p className="text-[10px] text-slate-450 dark:text-slate-500">Scrape sub-routes (/about, /our-team, /contact) for real contacts</p>

@@ -5,6 +5,7 @@ export enum LeadStatus {
   EMAIL_FAILED = 'EMAIL_FAILED',
   CONTACTED = 'CONTACTED',
   CONVERTED = 'CONVERTED',
+  INCOMPLETE = 'INCOMPLETE',
 }
 
 export enum JobStatus {
@@ -25,6 +26,8 @@ export interface Lead {
   emailSentAt?: string;
   createdAt: string;
   updatedAt: string;
+  instagramHandle?: string;
+  facebookUrl?: string;
 }
 
 export interface ScrapeJob {

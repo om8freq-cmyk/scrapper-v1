@@ -235,6 +235,16 @@ To audit outbound message states and verify response paths:
 * **72-Hour Drip Cron Rule**: The background `EmailWorker` executes a periodic checker evaluating whether a lead has remained in `EMAIL_SENT` status for more than 72 hours without response, dispatching a custom follow-up if required.
 * **Inbound Gateway Webhook**: Public routing catching inbound SMS/WhatsApp replies. Webhook updates targets to the `CONTACTED` column status and records comments to `MessageLog` instantly.
 
+## 11. V5.0 Unified Production Hybrid Scraper
+
+### 11.1 Search-Engine Sweep Discovery
+The Scraper worker leverages Playwright to autonomously query Bing Search (`[industry] in [region] website`), sweeps listings, isolates organic target domains, and crawls discovered locations.
+
+### 11.2 B2B Leads Filtering Rules
+- **Direct Mail Filtering**: Banned prefixes reject corporate front desks (`info@`, `support@`, `help@`, `sales@`, `marketing@`, `hello@`, `enquiry@`, `contact@`).
+- **Placeholder Dropping**: Any contact matching hardcoded patterns (e.g. `+91-99999-65119`, etc.) is dropped.
+- **Completeness Enforcement**: Leads lacking valid phone, email, or instagram handles are either dropped or flagged as `INCOMPLETE`.
+
 ---
 
 *© 2026 Cognitive CRM. All rights reserved.*

@@ -103,6 +103,9 @@ export class LeadsService {
     email: string;
     phone?: string;
     source: string;
+    instagramHandle?: string;
+    facebookUrl?: string;
+    status?: LeadStatus;
   }) {
     const result = await this.prisma.lead.upsert({
       where: { email: leadData.email },
@@ -110,6 +113,9 @@ export class LeadsService {
         name: leadData.name,
         age: leadData.age,
         phone: leadData.phone,
+        instagramHandle: leadData.instagramHandle,
+        facebookUrl: leadData.facebookUrl,
+        status: leadData.status,
       },
       create: {
         name: leadData.name,
@@ -117,7 +123,9 @@ export class LeadsService {
         email: leadData.email,
         phone: leadData.phone || null,
         source: leadData.source,
-        status: LeadStatus.NEW,
+        instagramHandle: leadData.instagramHandle || null,
+        facebookUrl: leadData.facebookUrl || null,
+        status: leadData.status || LeadStatus.NEW,
       },
     });
 

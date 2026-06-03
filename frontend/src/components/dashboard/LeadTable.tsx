@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Mail, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Mail, Trash2, Eye, ExternalLink, ChevronLeft, ChevronRight, Instagram, Facebook } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -59,13 +59,21 @@ export const LeadTable: React.FC = () => {
     }
   };
 
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      await api.updateLead(id, { status: newStatus as LeadStatus });
+      fetchLeads();
+      fetchStats();
+    } catch (err) {
+      console.error('Failed to update lead status:', err);
+    }
+  };
+
   // Mock leads fallback if backend yields nothing
   const mockLeads = [
-    { id: '1', name: 'John Doe', age: 34, email: 'john.doe@gmail.com', phone: '+1234567890', source: 'https://news.ycombinator.com', status: LeadStatus.NEW, createdAt: '2026-06-01T12:00:00Z' },
+    { id: '1', name: 'John Doe', age: 34, email: 'john.doe@gmail.com', phone: '+1234567890', source: 'https://news.ycombinator.com', status: LeadStatus.NEW, createdAt: '2026-06-01T12:00:00Z', instagramHandle: 'johndoe', facebookUrl: 'https://facebook.com/johndoe' },
     { id: '2', name: 'Alice Smith', age: 28, email: 'alice.smith@techcorp.io', phone: '+1987654321', source: 'https://github.com/trending', status: LeadStatus.EMAIL_SENT, createdAt: '2026-06-01T10:30:00Z' },
     { id: '3', name: 'Bob Johnson', age: 45, email: 'bob.j@financeplus.com', phone: undefined, source: 'https://linkedin.com', status: LeadStatus.EMAIL_QUEUED, createdAt: '2026-05-31T18:15:00Z' },
-    { id: '4', name: 'Emma Watson', age: 32, email: 'emma@watsondesign.co', phone: '+447911123456', source: 'https://dribbble.com', status: LeadStatus.CONVERTED, createdAt: '2026-05-30T14:40:00Z' },
-    { id: '5', name: 'David Lee', age: 29, email: 'david.lee@leemedia.net', phone: '+85291234567', source: 'https://reddit.com/r/startups', status: LeadStatus.EMAIL_FAILED, createdAt: '2026-05-29T09:00:00Z' },
   ];
 
   const displayedLeads = leads.length > 0 ? leads : (searchQuery || statusFilter !== 'ALL' ? [] : mockLeads);
@@ -104,6 +112,7 @@ export const LeadTable: React.FC = () => {
                 {status.replace('_', ' ')}
               </option>
             ))}
+            <option value="INCOMPLETE">Incomplete</option>
           </select>
         </div>
       </div>
@@ -116,7 +125,7 @@ export const LeadTable: React.FC = () => {
               <th className="px-6 py-3.5">Name</th>
               <th className="px-6 py-3.5">Email</th>
               <th className="px-6 py-3.5">Phone</th>
-              <th className="px-6 py-3.5">Age</th>
+              <th className="px-6 py-3.5">Socials</th>
               <th className="px-6 py-3.5">Source</th>
               <th className="px-6 py-3.5">Status</th>
               <th className="px-6 py-3.5">Created</th>
@@ -139,16 +148,52 @@ export const LeadTable: React.FC = () => {
                   {lead.phone || '—'}
                 </td>
                 <td className="px-6 py-3.5">
-                  {lead.age || '—'}
+                  <div className="flex items-center space-x-2 text-slate-400">
+                    {lead.instagramHandle && (
+                      <a 
+                        href={`https://instagram.com/${lead.instagramHandle}`} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        title={`@${lead.instagramHandle}`}
+                        className="text-pink-500 hover:text-pink-600 transition-colors"
+                      >
+                        <Instagram size={14} />
+                      </a>
+                    )}
+                    {lead.facebookUrl && (
+                      <a 
+                        href={lead.facebookUrl} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        title="Facebook Profile"
+                        className="text-blue-600 hover:text-blue-700 transition-colors"
+                      >
+                        <Facebook size={14} />
+                      </a>
+                    )}
+                    {!lead.instagramHandle && !lead.facebookUrl && <span>—</span>}
+                  </div>
                 </td>
                 <td className="px-6 py-3.5 max-w-[150px] truncate text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium">
                   <a href={lead.source} target="_blank" rel="noreferrer" className="inline-flex items-center space-x-1">
-                    <span>Target URL</span>
+                    <span>Source</span>
                     <ExternalLink size={10} />
                   </a>
                 </td>
                 <td className="px-6 py-3.5">
-                  <Badge status={lead.status} />
+                  <select
+                    value={lead.status}
+                    onChange={(e) => handleStatusChange(lead.id, e.target.value)}
+                    className="text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                  >
+                    <option value="NEW">New</option>
+                    <option value="EMAIL_QUEUED">Email Queued</option>
+                    <option value="EMAIL_SENT">Email Sent</option>
+                    <option value="EMAIL_FAILED">Email Failed</option>
+                    <option value="CONTACTED">Contacted</option>
+                    <option value="CONVERTED">Converted</option>
+                    <option value="INCOMPLETE">Incomplete</option>
+                  </select>
                 </td>
                 <td className="px-6 py-3.5 text-slate-400 dark:text-slate-500 font-medium">
                   {new Date(lead.createdAt).toLocaleDateString()}
@@ -239,6 +284,20 @@ export const LeadTable: React.FC = () => {
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phone Number</span>
                 <p className="text-sm font-medium text-slate-650 dark:text-slate-350 mt-0.5">{selectedLead.phone || 'N/A'}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Instagram</span>
+                <p className="text-sm font-medium text-slate-650 dark:text-slate-350 mt-0.5">
+                  {selectedLead.instagramHandle ? `@${selectedLead.instagramHandle}` : 'N/A'}
+                </p>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Facebook</span>
+                <p className="text-sm font-medium text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 mt-0.5 truncate max-w-[160px]">
+                  {selectedLead.facebookUrl ? (
+                    <a href={selectedLead.facebookUrl} target="_blank" rel="noreferrer">{selectedLead.facebookUrl}</a>
+                  ) : 'N/A'}
+                </p>
               </div>
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Age</span>

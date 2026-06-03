@@ -172,9 +172,10 @@ Modern B2B CRM and lead generation tools face severe limitations:
 
 ## 9. Phase Roadmap
 
-- **Phase 1 — Core Database & Multi-Tenant Isolation [Active]**: Deploy PostgreSQL migrations, configure RLS rules, build the RLS context middleware inside NestJS, and run integration security tests.
-- **Phase 2 — Metadata Mapping Engine & UI Wizard [Planned]**: Design dynamic schemas, compile runtime AJV validators, and build the frontend scraper configuration wizard.
-- **Phase 3 — Configurable AI Meta-Agent & Queues [Planned]**: Deploy BullMQ parsing workers, implement prompt injection factories, and enable subscription guards.
+- **Phase 1 — Core Database & Multi-Tenant Isolation [Completed]**: Deploy PostgreSQL migrations, configure RLS rules, build the RLS context middleware inside NestJS, and run integration security tests.
+- **Phase 2 — Metadata Mapping Engine & UI Wizard [Completed]**: Design dynamic schemas, compile runtime AJV validators, and build the frontend scraper configuration wizard.
+- **Phase 3 — Configurable AI Meta-Agent & Queues [Completed]**: Deploy BullMQ parsing workers, implement prompt injection factories, and enable subscription guards.
+- **Phase 5 — Unified Production Lifecycle & Hybrid Scraper [Completed]**: Added dual-mode hybrid launch parameters (URL Mode vs Omni-Discovery Mode), Playwright Bing Search web directory sweeping, deep sub-route contact crawler traversal, social graph extraction (Instagram handles and Facebook URLs), strict B2B omission filters, and automated inbound webhook pipeline upgrades to `CONTACTED`.
 
 ---
 

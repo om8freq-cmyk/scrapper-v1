@@ -720,27 +720,29 @@ export class InboundWebhookController {
 
 ---
 
-## 6. PLATFORM ENGINEERING PHASED BLUEPRINT
-
-To guarantee structured execution, the internal development lifecycle is split into three production stages:
-
-### Phase 1: Core Database Engine & Multi-Tenant Security Lockdown
-* **Objectives**: Enable database schemas, install Postgres extensions, compile RLS rules, and bind custom session variables in Postgres transactions.
-* **Deliverables**:
-  1. Complete SQL migrations executed on Supabase.
-  2. NestJS RLS Context Interceptor configured at the global API layer.
-  3. Integration tests validating that `tenant_id` blocks cross-tenant reads (assert that an active session context for Tenant A throws authorization errors if accessing tables owned by Tenant B).
-
-### Phase 2: Metadata Mapping System & UI Engine Development
-* **Objectives**: Build dynamic dashboard schema definitions, integrate the AJV schema verification engine, configure onboarding dashboards.
-* **Deliverables**:
-  1. Frontend "Dynamic Workspace Configurator" allowing tenants to select templates (Healthcare, Hotels, Malls) and modify vocabulary fields.
-  2. AJV validator API middleware intercepts incoming writes, throws schema errors before saving to DB.
-  3. Universal Scraper Field Mapper interface built and wired to `tenant_scraper_configs`.
-
 ### Phase 3: Configurable AI Agent & Scraping Pipeline Integration
 * **Objectives**: Deploy the asynchronous BullMQ parsing queues, wire LLM function calls dynamically extracting schemas, and enable prompt injection middlewares.
 * **Deliverables**:
   1. BullMQ parser worker running asynchronously, handling raw data payloads from scraper engine.
   2. Chat widget endpoint reading tenant context, dynamically adjusting system instruction sheets, and modifying lead stages automatically using function calls.
   3. Ingestion Guard middlewares blocking overages according to active Stripe subscription limits.
+
+---
+
+## 7. V5.0 UNIFIED PRODUCTION DISCOVERY ENGINE SPECIFICATIONS
+
+### 7.1 Hybrid Scraper & Playwright Crawler Routing
+The scraper worker supports dual input options:
+- **URL Targeting**: Direct extraction from the specified target URL page.
+- **Omni-Discovery Search**: Swings Bing search listings (e.g. `[industry] [region] business website`) to autonomously sweep and identify organic domain leads within a geographical boundary.
+
+### 7.2 Deep Sub-Route Traversals
+Crawl depth parses up to 3 sub-routes relative to target domains matching: `/about`, `/team`, `/contact`, `/management`, `/staff`, `/contact-us`, `/about-us`, `/terms`.
+
+### 7.3 Data Properties & Strict Filtration
+- **Additional DB Fields**: `instagramHandle` and `facebookUrl` added to the Lead relational model.
+- **Exclusion Filters**:
+  - Excludes low-intent generic front desks (support@, info@, help@, sales@, marketing@, hello@, enquiry@, contact@).
+  - Rejects dummy placeholder contact info (such as `+91-99999-65119`, etc.).
+  - Drop or flag leads missing vital endpoints as `INCOMPLETE`.
+

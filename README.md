@@ -79,8 +79,16 @@ All client-facing requests must supply the custom `x-tenant-id` header to route 
 |---|---|---|---|
 | `GET` | `/api/leads` | `x-tenant-id` | Retrieve paginated leads for active tenant |
 | `POST`| `/api/leads` | `x-tenant-id` | Save custom lead (validated via AJV schema) |
-| `POST`| `/api/scraper/jobs`| `x-tenant-id` | Deploy structured scraping task |
-| `POST`| `/webhook/communication/inbound`| `x-tenant-id` | WhatsApp/SMS webhook for AI Meta-Agent actions |
+| `POST`| `/api/scraper/jobs`| `x-tenant-id` | Deploy structured scraping task (supports URL Mode & Omni-Discovery Mode) |
+| `POST`| `/api/v1/webhooks/communication/inbound`| None | Public unauthenticated endpoint for communication replies |
+
+---
+
+## V5.0 Production Discovery Engine
+The Cognitive CRM now features a **Hybrid Scraper & Contact Retrieval Engine**:
+- **URL Targeting**: Aggressively crawls target websites, follows internal sub-routes `/about`, `/contact`, `/terms` up to 3 links, and parses structured contact data.
+- **Omni-Discovery Search**: Enter an industry and region (e.g. "Restaurant" in "Mumbai"). The scraper autonomously sweeps search engine results, harvests domain targets, and fetches direct mobile lines, emails, Instagram handles, and Facebook URLs.
+- **Strict B2B Filtration**: Drops low-intent front-desk addresses (`info@`, `support@`, etc.) and placeholder records. Contacts lacking complete endpoints are cleanly marked as `INCOMPLETE` or dropped to preserve lead quality.
 
 ---
 

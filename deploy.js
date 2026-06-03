@@ -60,7 +60,7 @@ async function main() {
   console.log("\n--- [4/5] Committing Local Changes ---");
   runCommand('git add .');
   
-  const commitMsg = "feat: complete recursive architectural workflow deployment of deep-search B2B scraper pipeline bypassing support filters with testing validation";
+  const commitMsg = "feat: complete recursive production pipeline deployment of dual-mode scraper with website URL and omni-discovery search options";
   try {
     fs.writeFileSync(path.join(rootDir, 'commit_msg.tmp'), commitMsg);
     execSync('git commit -F commit_msg.tmp', { stdio: 'inherit' });
