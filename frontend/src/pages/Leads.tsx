@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Download, SlidersHorizontal, Trash } from 'lucide-react';
+import { Download, SlidersHorizontal } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { LeadTable } from '../components/dashboard/LeadTable';
 import { Button } from '../components/ui/Button';

@@ -24,6 +24,11 @@ export const ScrapeJobPanel: React.FC = () => {
   const [phoneSelector, setPhoneSelector] = useState('');
   const [ageSelector, setAgeSelector] = useState('');
 
+  // Target matching variables
+  const [targetIndustry, setTargetIndustry] = useState('Restaurant');
+  const [targetRegion, setTargetRegion] = useState('');
+  const [deepLinkTraversal, setDeepLinkTraversal] = useState(false);
+
   useEffect(() => {
     fetchScrapeJobs();
     // Poll for changes in running jobs
@@ -39,7 +44,11 @@ export const ScrapeJobPanel: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      const config: Record<string, string> = {};
+      const config: Record<string, any> = {
+        targetIndustry,
+        targetRegion,
+        deepLinkTraversal,
+      };
       if (containerSelector) config.containerSelector = containerSelector;
       if (nameSelector) config.nameSelector = nameSelector;
       if (emailSelector) config.emailSelector = emailSelector;
@@ -58,6 +67,9 @@ export const ScrapeJobPanel: React.FC = () => {
       setEmailSelector('');
       setPhoneSelector('');
       setAgeSelector('');
+      setTargetIndustry('Restaurant');
+      setTargetRegion('');
+      setDeepLinkTraversal(false);
       setShowConfig(false);
       setIsOpen(false);
       
@@ -165,6 +177,50 @@ export const ScrapeJobPanel: React.FC = () => {
             value={targetUrl}
             onChange={(e) => setTargetUrl(e.target.value)}
           />
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="target-industry" className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
+                Target Industry
+              </label>
+              <select
+                id="target-industry"
+                value={targetIndustry}
+                onChange={(e) => setTargetIndustry(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-950/40 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              >
+                <option value="Restaurant">Restaurant</option>
+                <option value="Hospital/Clinic">Hospital/Clinic</option>
+                <option value="Softtoy Business">Softtoy Business</option>
+                <option value="Clothing/Cloth">Clothing/Cloth</option>
+                <option value="Construction Field">Construction Field</option>
+              </select>
+            </div>
+            
+            <Input
+              id="target-region"
+              label="Target Region"
+              placeholder="e.g. Chennai, Mumbai"
+              value={targetRegion}
+              onChange={(e) => setTargetRegion(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+            <div className="space-y-0.5">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Deep Link Traversal</span>
+              <p className="text-[10px] text-slate-450 dark:text-slate-500">Scrape sub-routes (/about, /our-team, /contact) for real contacts</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={deepLinkTraversal} 
+                onChange={(e) => setDeepLinkTraversal(e.target.checked)} 
+                className="sr-only peer" 
+              />
+              <div className="w-9 h-5 bg-slate-200 dark:bg-slate-850 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
 
           {/* Config options dropdown */}
           <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3">

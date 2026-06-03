@@ -10,6 +10,7 @@ export const StatsCards: React.FC = () => {
     total: 124,
     new: 42,
     emailSent: 78,
+    emailQueued: 0,
     converted: 18,
     todayCount: 12,
   };

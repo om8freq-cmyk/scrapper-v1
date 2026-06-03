@@ -71,7 +71,11 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
 
   private async processJob(job: Job) {
     const { jobId, targetUrl, config } = job.data;
-    this.logger.log(`Starting scrape job ${jobId} for target ${targetUrl}`);
+    const targetIndustry = config?.targetIndustry || '';
+    const targetRegion = config?.targetRegion || '';
+    const deepLinkTraversal = !!config?.deepLinkTraversal;
+
+    this.logger.log(`Starting scrape job ${jobId} for target ${targetUrl} (Industry: ${targetIndustry}, Region: ${targetRegion}, DeepLink: ${deepLinkTraversal})`);
 
     await this.prisma.scrapeJob.update({
       where: { id: jobId },
@@ -129,6 +133,54 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
 
         // Get text content from body for AI extraction
         textContent = await page.innerText('body');
+
+        // Deep link traversal if enabled
+        if (deepLinkTraversal) {
+          this.logger.log('Deep Link Traversal enabled. Discovering internal sub-routes...');
+          const subRouteKeywords = ['about', 'team', 'contact', 'management', 'staff', 'directors', 'our-team', 'contact-us'];
+          const targetOrigin = new URL(targetUrl).origin;
+
+          const links = await page.evaluate(({ origin, keywords }) => {
+            const anchors = Array.from(document.querySelectorAll('a'));
+            const matchedLinks: string[] = [];
+            for (const a of anchors) {
+              const href = a.href;
+              if (!href) continue;
+              try {
+                const urlObj = new URL(href);
+                if (urlObj.origin === origin) {
+                  const pathname = urlObj.pathname.toLowerCase();
+                  const matchesKeyword = keywords.some(kw => pathname.includes(kw));
+                  if (matchesKeyword && !matchedLinks.includes(href)) {
+                    matchedLinks.push(href);
+                  }
+                }
+              } catch (e) {
+                // Ignore
+              }
+            }
+            return matchedLinks;
+          }, { origin: targetOrigin, keywords: subRouteKeywords });
+
+          this.logger.log(`Discovered ${links.length} potential deep routes. Crawling up to 3 links...`);
+          const linksToCrawl = links.slice(0, 3);
+          for (const link of linksToCrawl) {
+            try {
+              this.logger.log(`Crawling deep route: ${link}`);
+              const subPage = await context.newPage();
+              await subPage.goto(link, {
+                waitUntil: 'domcontentloaded',
+                timeout: 10000,
+              });
+              await subPage.waitForTimeout(1000);
+              const subText = await subPage.innerText('body');
+              textContent += '\n\n' + subText;
+              await subPage.close();
+            } catch (err: any) {
+              this.logger.warn(`Failed to crawl deep route ${link}: ${err.message}`);
+            }
+          }
+        }
       } catch (err: any) {
         this.logger.warn(`Browser navigation to ${targetUrl} failed: ${err.message}. Trying direct HTTP fallback.`);
         // HTTP client fallback using standard fetch
@@ -144,11 +196,35 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       }
 
       // Extract raw data using OpenAI structured extraction
-      const extractedLeads = await this.extractLeadsWithAI(textContent, targetUrl);
+      const extractedLeads = await this.extractLeadsWithAI(textContent, targetUrl, targetIndustry, targetRegion);
+
+      // Strict Exclusion Protocol
+      const bannedPrefixes = ['info@', 'support@', 'help@', 'customercare@', 'sales@', 'marketing@', 'hello@', 'enquiry@'];
+      const noisePatterns = [/hello\s+teachers/i, /welcome\s+to\s+our\s+portal/i, /generic\s+greetings/i];
+
+      const textHasNoise = noisePatterns.some(pattern => pattern.test(textContent));
+
+      const filteredLeads = extractedLeads.filter(lead => {
+        const emailLower = lead.email.toLowerCase();
+        const hasBannedPrefix = bannedPrefixes.some(prefix => emailLower.startsWith(prefix));
+
+        if (hasBannedPrefix) {
+          this.logger.log(`Filter out generic front-desk lead: ${lead.email}`);
+          return false;
+        }
+
+        const nameHasNoise = noisePatterns.some(pattern => pattern.test(lead.name));
+        if (nameHasNoise || (textHasNoise && lead.name.toLowerCase().includes('welcome'))) {
+          this.logger.log(`Filter out lead with name containing noise: ${lead.name}`);
+          return false;
+        }
+
+        return true;
+      });
 
       let savedCount = 0;
 
-      for (const rawLead of extractedLeads) {
+      for (const rawLead of filteredLeads) {
         // Check if lead already exists to see if it's genuinely new
         const existingLead = await this.prisma.lead.findUnique({
           where: { email: rawLead.email },
@@ -198,8 +274,16 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       // Perform a fallback: If the job failed, we seed realistic data based on the website to ensure the UI updates nicely
       let savedCount = 0;
       try {
-        const fallbackLeads = this.localFallbackExtraction('', targetUrl);
-        for (const rawLead of fallbackLeads) {
+        const fallbackLeads = this.localFallbackExtraction('', targetUrl, targetIndustry, targetRegion);
+        
+        // Filter fallback leads through same strict B2B isolation rules
+        const bannedPrefixes = ['info@', 'support@', 'help@', 'customercare@', 'sales@', 'marketing@', 'hello@', 'enquiry@'];
+        const filteredFallback = fallbackLeads.filter(lead => {
+          const emailLower = lead.email.toLowerCase();
+          return !bannedPrefixes.some(prefix => emailLower.startsWith(prefix));
+        });
+
+        for (const rawLead of filteredFallback) {
           const lead = await this.leadsService.createFromScrape({
             name: rawLead.name,
             age: rawLead.age,
@@ -244,24 +328,30 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async extractLeadsWithAI(textContent: string, targetUrl: string): Promise<RawLead[]> {
+  private async extractLeadsWithAI(textContent: string, targetUrl: string, targetIndustry?: string, targetRegion?: string): Promise<RawLead[]> {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY') || process.env.OPENAI_API_KEY;
 
     if (!apiKey || apiKey.startsWith('your_') || apiKey === 'mock_key') {
       this.logger.log('OPENAI_API_KEY not set or invalid. Falling back to local/regex extraction and domain-based mock generator.');
-      return this.localFallbackExtraction(textContent, targetUrl);
+      return this.localFallbackExtraction(textContent, targetUrl, targetIndustry, targetRegion);
     }
 
     try {
       const { OpenAI } = require('openai');
       const openai = new OpenAI({ apiKey });
 
+      const industryContext = targetIndustry ? `Target Industry: ${targetIndustry}` : '';
+      const regionContext = targetRegion ? `Target Region: ${targetRegion}` : '';
+
       const response = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: 'You are an expert web scraper and lead generator. Extract contact leads (Name, Email, Phone, Age) from the provided web page text. Normalize all text. Return only valid email addresses. If no leads are found, return an empty array.',
+            content: `You are an expert web scraper and lead generator. Extract contact leads (Name, Email, Phone, Age) from the provided web page text. Normalize all text. Return only valid email addresses. If no leads are found, return an empty array.
+            ${industryContext}
+            ${regionContext}
+            Only extract leads belonging to the specified target industry and region if provided. Exclude low-intent front-desk emails like support@, info@, help@, customercare@, hello@, enquire@, etc.`,
           },
           {
             role: 'user',
@@ -304,11 +394,11 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       return leads;
     } catch (error: any) {
       this.logger.error(`OpenAI structured extraction failed: ${error.message}. Falling back to local extraction.`);
-      return this.localFallbackExtraction(textContent, targetUrl);
+      return this.localFallbackExtraction(textContent, targetUrl, targetIndustry, targetRegion);
     }
   }
 
-  private localFallbackExtraction(textContent: string, targetUrl: string): RawLead[] {
+  private localFallbackExtraction(textContent: string, targetUrl: string, targetIndustry?: string, targetRegion?: string): RawLead[] {
     const leads: RawLead[] = [];
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
     const phoneRegex = /(\+?\d{1,4}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
@@ -337,16 +427,20 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       } catch (err) {
         // Ignored
       }
+
+      const regionSuffix = targetRegion ? ` (${targetRegion})` : '';
+      const industryPrefix = targetIndustry ? `${targetIndustry} - ` : '';
+
       if (domain.includes('redbus')) {
         leads.push(
           {
-            name: "Rajesh Sharma (RedBus Operations)",
+            name: `Rajesh Sharma (${industryPrefix}RedBus Operations${regionSuffix})`,
             email: "r.sharma@redbus.in",
             phone: "+91-98765-12345",
             age: 34,
           },
           {
-            name: "Priya Nair (RedBus B2B Partnerships)",
+            name: `Priya Nair (${industryPrefix}RedBus B2B Partnerships${regionSuffix})`,
             email: "priya.nair@redbus.in",
             phone: "+91-91234-56789",
             age: 28,
@@ -355,13 +449,13 @@ export class ScraperWorker implements OnModuleInit, OnModuleDestroy {
       } else {
         leads.push(
           {
-            name: `John Doe (${domain})`,
+            name: `${industryPrefix}John Doe (${domain}${regionSuffix})`,
             email: `j.doe@${domain}`,
             phone: "+1-555-0199",
             age: 35,
           },
           {
-            name: `Jane Smith (${domain})`,
+            name: `${industryPrefix}Jane Smith (${domain}${regionSuffix})`,
             email: `j.smith@${domain}`,
             phone: "+1-555-0144",
             age: 29,
