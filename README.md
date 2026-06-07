@@ -70,6 +70,15 @@ npm run dev
 ```
 Frontend runs at `http://localhost:5173`.
 
+### 5. Run Mobile App (Android)
+To compile the mobile application wrapper:
+```bash
+cd frontend
+npm run build:android
+```
+This bundles web assets, syncs them to the Capacitor Android project, and launches the project configurations.
+The compiled package can be found at the workspace root: `cognitive-crm-scraper.apk`.
+
 ---
 
 ## Key API Endpoints

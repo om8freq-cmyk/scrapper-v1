@@ -746,3 +746,47 @@ Crawl depth parses up to 3 sub-routes relative to target domains matching: `/abo
   - Rejects dummy placeholder contact info (such as `+91-99999-65119`, etc.).
   - Drop or flag leads missing vital endpoints as `INCOMPLETE`.
 
+---
+
+## 8. MOBILE WRAPPER & DEPLOYMENT ARCHITECTURE (CAPACITOR)
+
+To deliver a premium mobile experience without rewriting the core React 19 web codebase, the platform integrates **Ionic Capacitor** to bridge web assets with native mobile runtimes.
+
+### 8.1 Capacitor Web-to-Native Bridge Architecture
+The mobile client compiles web assets into optimized bundles (`dist`) which are synced to a native Android wrapper project structure.
+
+```
+┌───────────────────────────────────────────────┐
+│          React 19 Frontend Web App            │
+│   (Vite Production Build Output -> dist)      │
+└──────────────────────┬────────────────────────┘
+                       │ npx cap sync
+                       ▼
+┌───────────────────────────────────────────────┐
+│             Capacitor Web View                │
+│    (Runs inside Native Android Activity)      │
+└──────────────────────┬────────────────────────┘
+                       │ Bridge Interface
+                       ▼
+┌───────────────────────────────────────────────┐
+│            Native Android Framework           │
+│   (Java/Kotlin APIs - Geolocation, Storage)   │
+└───────────────────────────────────────────────┘
+```
+
+### 8.2 Android Manifest Permissive Customizations
+To ensure connection compatibility with local backend API systems (which utilize non-HTTPS `http` loops), the wrapper integrates `usesCleartextTraffic` permission directly under the `<application>` manifest tree.
+
+```xml
+<application
+    android:allowBackup="true"
+    android:icon="@mipmap/ic_launcher"
+    android:label="@string/app_name"
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:supportsRtl="true"
+    android:theme="@style/AppTheme"
+    android:usesCleartextTraffic="true">
+    ...
+</application>
+```
+

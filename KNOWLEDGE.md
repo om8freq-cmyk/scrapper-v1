@@ -247,4 +247,24 @@ The Scraper worker leverages Playwright to autonomously query Bing Search (`[ind
 
 ---
 
+## 12. Mobile Platform Integration Guide
+
+We wrap our React 19 web application into a native Android application package using **Ionic Capacitor** to enable mobile distribution.
+
+### 12.1 Directory Structure
+The mobile client resides in the frontend project root:
+*   [capacitor.config.ts](file:///d:/ScRaPpEr/frontend/capacitor.config.ts): Holds the application ID (`com.cognitivecrm.app`), app name, and web assets source directory.
+*   [frontend/android/](file:///d:/ScRaPpEr/frontend/android): The Gradle project directory containing Android build setups and resources.
+*   [setup_android.ps1](file:///d:/ScRaPpEr/setup_android.ps1): Automated script that installs the Android SDK, accepts licenses, and sets up `local.properties`.
+
+### 12.2 Setup Commands
+*   `npm run cap:sync`: Synchronizes build assets from `dist` to the Android native directory.
+*   `npm run cap:open`: Opens the native Gradle project structure in Android Studio.
+*   `npm run build:android`: Automates the compilation of web assets, syncing, and opening Android Studio.
+
+### 12.3 Network Connection Configurations
+For Android emulators, use `http://10.0.2.2:3000/api` in `frontend/.env` to loop back to the host machine. Ensure `usesCleartextTraffic` is active in `AndroidManifest.xml` to prevent security errors on non-HTTPS networks.
+
+---
+
 *© 2026 Cognitive CRM. All rights reserved.*
